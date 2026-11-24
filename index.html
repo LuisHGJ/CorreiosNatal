@@ -32,6 +32,10 @@
   .seenlabel { margin-left:auto; font-size:.82rem; color:var(--muted); display:flex; align-items:center; gap:5px; cursor:pointer; }
   footer { text-align:center; color:var(--muted); font-size:.82rem; padding:20px 16px 32px; }
   footer a { color:var(--red); }
+  .card.adotada { background:#eef7f1; border-color:#b9dcc6; }
+  .card.adotada .btn { background:#8a8a8a; }
+  .tag-adotada { background:var(--green); color:#fff; border-radius:999px; padding:3px 10px; font-size:.8rem; font-weight:600; }
+  .adotante { font-size:.9rem; color:var(--green); font-weight:600; }
   .empty { text-align:center; color:var(--muted); padding:40px 0; }
 </style>
 </head>
@@ -55,6 +59,11 @@
       <option value="4-7">4 a 7 anos</option>
       <option value="8-12">8 a 12 anos</option>
       <option value="13-99">13 anos ou mais</option>
+    </select>
+    <select id="status">
+      <option value="">Todas as cartas</option>
+      <option value="disponivel">Só disponíveis</option>
+      <option value="adotada">Só adotadas</option>
     </select>
     <select id="ordem">
       <option value="idade">Ordenar por idade</option>
@@ -110,15 +119,19 @@ const CARTAS = [
   [2202731,7,"Feminino","CARRINHO OU BONECA OU _OUTROS"]
 ];
 
+// Cartas já adotadas: "número da carta": "Nome de quem adotou"
+// Para marcar uma carta, adicione uma linha aqui e suba o arquivo de novo.
+const ADOTADAS = {
+  // 2065327: "Maria Silva",
+  // 2065592: "João Souza",
+};
+
 const URL_BASE = "https://blognoel.correios.com.br/adocao/exibeCarta.php?idCarta=742026";
 const KEY = "cartas-tupa-vistas";
-const KEY_ADOTADAS = "cartas-tupa-adotadas";
 
 let vistas = new Set();
-let adotadas = new Map();
 try { vistas = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
 const salvar = () => { try { localStorage.setItem(KEY, JSON.stringify([...vistas])); } catch (e) {} };
-const salvarAdotadas = () => { try { localStorage.setItem(KEY_ADOTADAS, JSON.stringify([...adotadas.entries()])); } catch (e) {} };
 
 const $ = id => document.getElementById(id);
 const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -134,9 +147,11 @@ function render() {
   const sexo = $("sexo").value;
   const [min, max] = $("faixa").value ? $("faixa").value.split("-").map(Number) : [0, 999];
   const ocultar = $("ocultarVistas").checked;
+  const status = $("status").value;
 
   let lista = CARTAS.filter(([n, idade, s, pedido]) =>
     (!sexo || s === sexo) &&
+    (!status || (status === "adotada") === (n in ADOTADAS)) &&
     idade >= min && idade <= max &&
     (!q || norm(pedido.replace("_OUTROS","outros")).includes(q) || String(n).includes(q)) &&
     !(ocultar && vistas.has(n))
@@ -144,20 +159,22 @@ function render() {
 
   lista.sort($("ordem").value === "idade" ? (a, b) => a[1] - b[1] || a[0] - b[0] : (a, b) => a[0] - b[0]);
 
-  $("count").textContent = `${lista.length} de ${CARTAS.length} cartas · ${vistas.size} marcadas como vistas`;
+  const totalAdotadas = CARTAS.filter(c => c[0] in ADOTADAS).length;
+  $("count").textContent = `${lista.length} de ${CARTAS.length} cartas · ${totalAdotadas} adotadas · ${vistas.size} marcadas como vistas`;
+
+  const esc = t => String(t).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
   $("grid").innerHTML = lista.length ? lista.map(([n, idade, s, pedido]) => `
-    <article class="card ${vistas.has(n) ? "seen" : ""}">
-      <div class="top"><span>Carta Nº ${n}</span></div>
-      <div class="adotado">Adotado por: <span class="nome">${adotadas.has(n) ? adotadas.get(n) : "—"}</span></div>
+    <article class="card ${vistas.has(n) ? "seen" : ""} ${n in ADOTADAS ? "adotada" : ""}">
+      <div class="top"><span>Carta Nº ${n}</span>${n in ADOTADAS ? '<span class="tag-adotada">✔ Adotada</span>' : ""}</div>
       <div class="badges">
         <span class="badge">${idade} ${idade === 1 ? "ano" : "anos"}</span>
         <span class="badge ${s === "Feminino" ? "f" : "m"}">${s}</span>
       </div>
       <div class="pedido"><b>Pedido</b>${formatarPedido(pedido)}</div>
+      ${n in ADOTADAS ? `<div class="adotante">Adotada por ${esc(ADOTADAS[n])}</div>` : ""}
       <div class="actions">
-        <a class="btn" href="${URL_BASE}${n}" target="_blank" rel="noopener">Ler / Adotar</a>
-        <button class="btn-adotar btn" style="background:#e74c3c; margin-left:8px;">Adotar</button>
+        <a class="btn" href="${URL_BASE}${n}" target="_blank" rel="noopener">${n in ADOTADAS ? "Ler carta" : "Ler / Adotar"}</a>
         <label class="seenlabel"><input type="checkbox" data-n="${n}" ${vistas.has(n) ? "checked" : ""}> Vista</label>
       </div>
     </article>`).join("") : `<div class="empty">Nenhuma carta encontrada com esses filtros.</div>`;
@@ -169,7 +186,7 @@ $("grid").addEventListener("change", e => {
   e.target.checked ? vistas.add(n) : vistas.delete(n);
   salvar(); render();
 });
-["q","sexo","faixa","ordem","ocultarVistas"].forEach(id => $(id).addEventListener("input", render));
+["q","sexo","faixa","status","ordem","ocultarVistas"].forEach(id => $(id).addEventListener("input", render));
 render();
 </script>
 </body>
