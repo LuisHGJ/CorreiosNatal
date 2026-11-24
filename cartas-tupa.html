@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartas Papai Noel dos Correios – Tupã/SP</title>
+<style>
+  :root { --red:#c0392b; --green:#1e7a4c; --bg:#faf6f0; --card:#fff; --text:#222; --muted:#6b6b6b; --line:#e6dfd3; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  header { background:var(--red); color:#fff; padding:24px 16px; text-align:center; }
+  header h1 { margin:0 0 4px; font-size:1.5rem; }
+  header p { margin:0; opacity:.9; font-size:.95rem; }
+  main { max-width:1000px; margin:0 auto; padding:16px; }
+  .filters { display:flex; flex-wrap:wrap; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px; margin-bottom:12px; }
+  .filters input, .filters select { padding:9px 10px; border:1px solid var(--line); border-radius:8px; font-size:.95rem; background:#fff; }
+  .filters input[type=search] { flex:1 1 220px; }
+  .filters label { display:flex; align-items:center; gap:6px; font-size:.9rem; color:var(--muted); }
+  .count { color:var(--muted); font-size:.9rem; margin:4px 2px 12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:12px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .card.seen { opacity:.55; }
+  .top { display:flex; justify-content:space-between; align-items:center; font-size:.8rem; color:var(--muted); }
+  .badges { display:flex; gap:6px; flex-wrap:wrap; }
+  .badge { background:#f1ece2; border-radius:999px; padding:3px 10px; font-size:.82rem; font-weight:600; }
+  .badge.f { background:#fde6ee; } .badge.m { background:#e1eefc; }
+  .pedido { font-size:.95rem; line-height:1.4; flex:1; }
+  .pedido b { display:block; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  .actions { display:flex; gap:8px; align-items:center; }
+  .btn { background:var(--green); color:#fff; text-decoration:none; padding:9px 14px; border-radius:8px; font-weight:600; font-size:.9rem; }
+  .btn:hover { filter:brightness(1.1); }
+  .seenlabel { margin-left:auto; font-size:.82rem; color:var(--muted); display:flex; align-items:center; gap:5px; cursor:pointer; }
+  footer { text-align:center; color:var(--muted); font-size:.82rem; padding:20px 16px 32px; }
+  footer a { color:var(--red); }
+  .empty { text-align:center; color:var(--muted); padding:40px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎅 Cartas – Tupã/SP</h1>
+  <p>Todas as cartas do Papai Noel dos Correios da cidade, em um só lugar</p>
+</header>
+
+<main>
+  <div class="filters">
+    <input type="search" id="q" placeholder="Buscar pedido (ex.: boneca, mochila, calçado...)">
+    <select id="sexo">
+      <option value="">Todos os sexos</option>
+      <option value="Feminino">Feminino</option>
+      <option value="Masculino">Masculino</option>
+    </select>
+    <select id="faixa">
+      <option value="">Todas as idades</option>
+      <option value="0-3">0 a 3 anos</option>
+      <option value="4-7">4 a 7 anos</option>
+      <option value="8-12">8 a 12 anos</option>
+      <option value="13-99">13 anos ou mais</option>
+    </select>
+    <select id="ordem">
+      <option value="idade">Ordenar por idade</option>
+      <option value="numero">Ordenar por nº da carta</option>
+    </select>
+    <label><input type="checkbox" id="ocultarVistas"> Ocultar marcadas como vistas</label>
+  </div>
+
+  <div class="count" id="count"></div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer>
+  Fonte: <a href="https://blognoel.correios.com.br/blognoel/index.php" target="_blank" rel="noopener">Blog do Papai Noel dos Correios</a>.
+  Este é um índice não oficial; a adoção é feita no site dos Correios.
+</footer>
+
+<script>
+// [numero, idade, sexo, pedido]
+const CARTAS = [
+  [2065327,22,"Masculino","CALÇADO OU ROUPA OU MOCHILA"],
+  [2065592,2,"Feminino","BARBIE OU CALÇADO OU CARRINHO DE BONECA"],
+  [2065698,5,"Masculino","INSTRUMENTO MUSICAL OU _OUTROS OU CALÇADO"],
+  [2065775,13,"Masculino","ROUPA OU BICICLETA OU MOCHILA"],
+  [2068723,38,"Feminino","CALÇADO OU MOCHILA OU BARBIE"],
+  [2069327,9,"Masculino","VIDEO GAME"],
+  [2091124,3,"Masculino","BONECO OU CARRINHO DE CONTROLE REMOTO"],
+  [2092728,8,"Feminino","_OUTROS"],
+  [2106611,5,"Feminino","MATERIAL ESCOLAR OU MOCHILA OU GARRAFINHA DE ÁGUA"],
+  [2106622,9,"Feminino","MATERIAL ESCOLAR OU MOCHILA OU GARRAFINHA DE ÁGUA"],
+  [2106629,7,"Feminino","MATERIAL ESCOLAR OU MOCHILA OU GARRAFINHA DE ÁGUA"],
+  [2117289,4,"Feminino","_OUTROS"],
+  [2158228,5,"Masculino","_OUTROS"],
+  [2167607,9,"Feminino","CALÇADO OU MATERIAL ESCOLAR"],
+  [2167798,7,"Feminino","ÁRVORE DE NATAL OU KIT SLIME"],
+  [2176373,6,"Masculino","PISCINA INFLÁVEL"],
+  [2176833,3,"Masculino","HOT WHEELS OU HOT WHEELS"],
+  [2184411,2,"Masculino","ROUPA OU DINOSSAURO"],
+  [2186488,9,"Feminino","MOCHILA OU MAQUIAGEM"],
+  [2189103,3,"Feminino","ROUPA OU CALÇADO OU CARRINHO DE BONECA"],
+  [2189336,5,"Masculino","_OUTROS OU ROUPA OU CALÇADO"],
+  [2192198,4,"Masculino","_OUTROS"],
+  [2192220,9,"Masculino","_OUTROS"],
+  [2193071,7,"Masculino","MATERIAL ESCOLAR OU TRICICLO/VELOTROL"],
+  [2193085,10,"Masculino","MATERIAL ESCOLAR OU CALÇADO OU ROUPA"],
+  [2194322,10,"Feminino","BONECA"],
+  [2194344,2,"Masculino","BONECO"],
+  [2194357,6,"Masculino","KIT"],
+  [2196083,1,"Masculino","ROUPA"],
+  [2196291,9,"Feminino","PATINS OU CASA DE BONECA"],
+  [2196298,6,"Masculino","PATINS OU CARRINHO DE CONTROLE REMOTO"],
+  [2202402,8,"Feminino","BONECA OU MATERIAL ESCOLAR"],
+  [2202731,7,"Feminino","CARRINHO OU BONECA OU _OUTROS"]
+];
+
+const URL_BASE = "https://blognoel.correios.com.br/adocao/exibeCarta.php?idCarta=742026";
+const KEY = "cartas-tupa-vistas";
+const KEY_ADOTADAS = "cartas-tupa-adotadas";
+
+let vistas = new Set();
+let adotadas = new Map();
+try { vistas = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
+const salvar = () => { try { localStorage.setItem(KEY, JSON.stringify([...vistas])); } catch (e) {} };
+const salvarAdotadas = () => { try { localStorage.setItem(KEY_ADOTADAS, JSON.stringify([...adotadas.entries()])); } catch (e) {} };
+
+const $ = id => document.getElementById(id);
+const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+function formatarPedido(p) {
+  const itens = [...new Set(p.split(" OU ").map(s => s.trim()))]
+    .map(s => s === "_OUTROS" ? "Outros" : s.charAt(0) + s.slice(1).toLowerCase());
+  return itens.join(" · ");
+}
+
+function render() {
+  const q = norm($("q").value.trim());
+  const sexo = $("sexo").value;
+  const [min, max] = $("faixa").value ? $("faixa").value.split("-").map(Number) : [0, 999];
+  const ocultar = $("ocultarVistas").checked;
+
+  let lista = CARTAS.filter(([n, idade, s, pedido]) =>
+    (!sexo || s === sexo) &&
+    idade >= min && idade <= max &&
+    (!q || norm(pedido.replace("_OUTROS","outros")).includes(q) || String(n).includes(q)) &&
+    !(ocultar && vistas.has(n))
+  );
+
+  lista.sort($("ordem").value === "idade" ? (a, b) => a[1] - b[1] || a[0] - b[0] : (a, b) => a[0] - b[0]);
+
+  $("count").textContent = `${lista.length} de ${CARTAS.length} cartas · ${vistas.size} marcadas como vistas`;
+
+  $("grid").innerHTML = lista.length ? lista.map(([n, idade, s, pedido]) => `
+    <article class="card ${vistas.has(n) ? "seen" : ""}">
+      <div class="top"><span>Carta Nº ${n}</span></div>
+      <div class="adotado">Adotado por: <span class="nome">${adotadas.has(n) ? adotadas.get(n) : "—"}</span></div>
+      <div class="badges">
+        <span class="badge">${idade} ${idade === 1 ? "ano" : "anos"}</span>
+        <span class="badge ${s === "Feminino" ? "f" : "m"}">${s}</span>
+      </div>
+      <div class="pedido"><b>Pedido</b>${formatarPedido(pedido)}</div>
+      <div class="actions">
+        <a class="btn" href="${URL_BASE}${n}" target="_blank" rel="noopener">Ler / Adotar</a>
+        <button class="btn-adotar btn" style="background:#e74c3c; margin-left:8px;">Adotar</button>
+        <label class="seenlabel"><input type="checkbox" data-n="${n}" ${vistas.has(n) ? "checked" : ""}> Vista</label>
+      </div>
+    </article>`).join("") : `<div class="empty">Nenhuma carta encontrada com esses filtros.</div>`;
+}
+
+$("grid").addEventListener("change", e => {
+  const n = Number(e.target.dataset.n);
+  if (!n) return;
+  e.target.checked ? vistas.add(n) : vistas.delete(n);
+  salvar(); render();
+});
+["q","sexo","faixa","ordem","ocultarVistas"].forEach(id => $(id).addEventListener("input", render));
+render();
+</script>
+</body>
+</html>
